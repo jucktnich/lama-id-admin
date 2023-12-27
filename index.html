@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <title>Lama ID Admin</title>
+    <meta charset="UTF-8">
+    <meta
+        description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
+    <link rel="stylesheet" type="text/css" href="styles.css" />
+</head>
+
+<body>
+    <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
+    <div id="login-div">
+        <input type="password" name="password" id="password" placeholder="Passwort" required />
+        <button id="login">Anmelden</button>
+        <br>
+    </div>
+    <div id="app">
+        <button id="import-school">Schule importieren</button>
+        <div id="import-school-fields"></div>
+        <br>
+    </div>
+    <svg id="barcode"></svg>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/barcodes/JsBarcode.code128.min.js"></script>
+    <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pdf-lib/dist/pdf-lib.min.js"></script>
+    <script type="module" src="./app.js"></script>
+</body>
+
+</html>
