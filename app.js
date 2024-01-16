@@ -1,5 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 const supabaseUrl = 'https://supabase.lama-id.de'
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzA0NDA5MjAwLAogICJleHAiOiAxODYyMjYyMDAwCn0.r_Iv-w4S5DncSzdO5CSIr0nIdOxG6kQFhzMkxvp6a4A'
 let supabase;
 
 const idPdfBytes = await fetch('id_schueler.pdf').then((res) => res.arrayBuffer());
@@ -9,10 +10,28 @@ let width, height, bahnschrift;
 
 const appEle = document.getElementById("app")
 
-function picFinished(pic, frame, size) {
+function blobToImage(blob) {
+    return new Promise(resolve => {
+        const url = URL.createObjectURL(blob)
+        let img = new Image()
+        img.onload = () => {
+            URL.revokeObjectURL(url)
+            resolve(img)
+        }
+        img.src = url
+    })
+}
+
+async function picFinished(pic, frame, size, i, pictureList) {
     console.log("Cropping of the picture finished");
-
-
+    const { data, error } = await supabase
+        .from('picture_list')
+        .update({ frame: frame, size: size, original_state: pictureList[i] })
+        .eq('picture_id', pictureList[i].picture_id)
+        .select()
+    pictureList[i].frame = frame;
+    pictureList[i].size = size;
+    showSite(i, pictureList)
 }
 
 function closeCanvas() {
@@ -24,17 +43,21 @@ function closeCanvas() {
     document.body.style.touchAction = 'auto'
 }
 
-function cropPhoto(pic) {
-    document.querySelector('[id^="b_1urq61qi_"]').children[0].style.zIndex = '990';
+function cropPhoto(pic, i, pictureList) {
+    console.log(pic)
     document.body.style.overflowY = 'hidden'
     document.body.style.position = 'fixed'
     document.body.style.touchAction = 'none'
 
+    let timeout;
     window.addEventListener("resize", () => {
-        if (document.getElementById("crop-canvas")) {
-            closeCanvas();
-            cropPhoto(pic);
-        }
+        clearTimeout(timeout);
+        timeout = setTimeout(() => {
+            if (document.getElementById("crop-canvas")) {
+                closeCanvas();
+                cropPhoto(pic, i, pictureList);
+            }
+        }, 250);
     })
 
     const windowWidth = window.innerWidth;
@@ -46,25 +69,13 @@ function cropPhoto(pic) {
     appEle.innerHTML += '<canvas id="crop-canvas"></canvas><div class="center-content" id="pic-border-container"><div id="pic-border"></div><button id="pic-border-btn">OK</button></div>'
     const borderDims = document.getElementById("pic-border").getBoundingClientRect();
     document.getElementById("pic-border-btn").addEventListener('click', () => {
-        /*let left = (windowWidth - boxDims.width) / 2;
-        let right = left + boxDims.width;
-        let top = (windowHeight - boxDims.height) / 2;
-        let bottom = top + boxDims.height;*/
-        /*let leftPic = (pic.width / 2) - ((boxDims.left - (cameraOffset.x*cameraZoom))/* / cameraZoom*//*)
-        let topPic = (pic.height / 2) - ((boxDims.top - (cameraOffset.y*cameraZoom))/* / cameraZoom*///)
-        //let leftPic = (((pic.width * cameraZoom) / 2) - (cameraOffset.x / cameraZoom - borderDims.x)) / cameraZoom
-        //let leftPic = -(((cameraOffset.x - windowWidth / 2) / cameraZoom) + (pic.width * cameraZoom - borderDims.width) / 2) * cameraZoom
-        //let topPic = (((pic.height * cameraZoom) / 2) - (cameraOffset.y - borderDims.y)) / cameraZoom
         let leftPic = ((((windowWidth / 2) - cameraOffset.x) * cameraZoom) - (((windowWidth / 2) - borderDims.left) - ((pic.width * cameraZoom) / 2))) / cameraZoom
         let topPic = ((((windowHeight / 2) - cameraOffset.y) * cameraZoom) - (((windowHeight / 2) - borderDims.top) - ((pic.height * cameraZoom) / 2))) / cameraZoom
         let rightPic = borderDims.width / cameraZoom
         let bottomPic = borderDims.height / cameraZoom
-        //let topPic = (((cameraOffset.y - windowHeight / 2) / cameraZoom) + (pic.height * cameraZoom - borderDims.height) / 2) * cameraZoom
-        //let rightPic = (pic.width - (((((pic.width * cameraZoom) / 2) + cameraOffset.x) - (borderDims.right)) / cameraZoom)) - leftPic
-        //let bottomPic = (pic.height - (((((pic.height * cameraZoom) / 2) + cameraOffset.y) - (borderDims.bottom)) / cameraZoom)) - topPic
         closeCanvas()
         console.log([leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height], cameraZoom, borderDims, cameraOffset, pic)
-        picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height])
+        picFinished(pic, [leftPic, topPic, rightPic, bottomPic], [pic.width, pic.height], i, pictureList)
     })
 
     let canvas = document.getElementById("crop-canvas")
@@ -301,11 +312,15 @@ async function createID(userID, preprint) {
 
     const { data: file, error: fileError } = await supabase.storage
         .from('pictures')
-        .download(picture.user_id + '/' + picture.picture_id + '.png');
+        .download(picture.user_id + '/' + picture.picture_id + '.jpg');
     if (fileError) {
         console.error(picError)
         throw new Error(`Supabase error downloading picture data: ${userID}`);
     }
+
+    appEle.innerHTML += `
+    <img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
+    <div style="position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>`
 
 
     const idPdf = await PDFLib.PDFDocument.load(idPdfBytes);
@@ -315,7 +330,7 @@ async function createID(userID, preprint) {
     width = pages[0].getSize().width
     height = pages[0].getSize().height
 
-    const image = await idPdf.embedPng(await file.arrayBuffer())
+    const image = await idPdf.embedJpg(await file.arrayBuffer())
     pages[0].drawImage(image, {
         x: 4.035 * (width / standardWidth),
         y: height - (44.793 * (height / standardHeight)),
@@ -383,11 +398,11 @@ async function result(userID, pictureID, status, rejectionReason) {
         .from('verified_pictures')
         .upsert({ picture_id: pictureID, user_id: userID, status: status, rejection_reason: rejectionReason })
         .select()
-    if(error) console.warn(error)
+    if (error) console.warn(error)
 }
 
 async function showSite(i, pictureList) {
-    if (i === (pictureList.length - 1)) { app.innerHTML = "Fertig"; return; }
+    if (i >= pictureList.length) { app.innerHTML = "Fertig"; return; }
     if (!pictureList[i]) { showSite(i + 1, pictureList); return; }
 
     const { data: file, error: fileError } = await supabase
@@ -396,7 +411,6 @@ async function showSite(i, pictureList) {
         .download(`${pictureList[i].user_id}/${pictureList[i].picture_id}.jpg`)
     if (fileError) {
         console.warn(fileError);
-        showError();
         showSite(i + 1, pictureList);
     }
 
@@ -432,8 +446,16 @@ async function showSite(i, pictureList) {
     <br>
     <br>
     <button id="reject-shaky" style="color: red">Verwackelt</button>
+    <br>
+    <br>
+    <br>
+    <button id="skip" style="color: black">Überspringen</button>
     </div>`
-    //document.getElementById("resize").addEventListener("click")
+    new Image(await file).onload = function () {
+        console.log(this)
+    }
+    console.log(await file, await file.arrayBuffer(), new Image(await file), new Image(await file.arrayBuffer()))
+    document.getElementById("resize").addEventListener("click", async () => { cropPhoto(await blobToImage(await file), i, pictureList) })
     document.getElementById("accept").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "ACCEPTED", null); showSite(i + 1, pictureList); })
     document.getElementById("clarification").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "CLARIFICATION", null); showSite(i + 1, pictureList); })
     document.getElementById("reject-group").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Keine Gruppenfotos"); showSite(i + 1, pictureList); })
@@ -441,6 +463,7 @@ async function showSite(i, pictureList) {
     document.getElementById("reject-accessoires").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Keine Accessoires"); showSite(i + 1, pictureList); })
     document.getElementById("reject-blurred").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Unscharf"); showSite(i + 1, pictureList); })
     document.getElementById("reject-shaky").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "REJECTED", "Verwackelt"); showSite(i + 1, pictureList); })
+    document.getElementById("skip").addEventListener("click", () => { showSite(i + 1, pictureList); })
 }
 
 async function classify() {
@@ -451,7 +474,6 @@ async function classify() {
         .order('created_at', { ascending: false });
     if (pictureListError) {
         console.warn(pictureListError);
-        showError();
         return;
     }
 
@@ -469,14 +491,14 @@ async function classify() {
     let lastID;
 
     outer:
-    for (let i = 0; i < verified.length; i++) {
-        for (let j = 0; j < pictureList.length; j++) {
-            if (!pictureList[j]) continue;
-            if (pictureList[j].user_id === lastID) {
-                delete pictureList[j];
-                continue outer;
-            }
-            lastID = pictureList[j].user_id
+    for (let j = 0; j < pictureList.length; j++) {
+        if (!pictureList[j]) continue;
+        if (pictureList[j].user_id === lastID) {
+            delete pictureList[j];
+            continue outer;
+        }
+        lastID = pictureList[j].user_id
+        for (let i = 0; i < verified.length; i++) {
             if (pictureList[j].picture_id === verified[i].picture_id) {
                 if (verified[i].status !== 'UPLOADED') {
                     delete pictureList[j];
@@ -566,12 +588,31 @@ function importSchool() {
 }
 
 async function logUserIn() {
-    supabase = createClient(supabaseUrl, document.getElementById("password").value)
+    supabase = await createClient(supabaseUrl, document.getElementById("service-key").value)
+    document.getElementById('login-div').style.display = 'none';
+    console.log('Supabase client started', supabase)
+    /*const { data: user, error: userError } = await supabase.auth.admin.createUser({
+        email: 'classifier@lama-id.de',
+        password: '',
+        email_confirm: true,
+        role: 'classifier'
+    })*/
+}
+
+async function logEmailIn() {
+    supabase = await createClient(supabaseUrl, supabaseKey)
+    const { data, error } = await supabase.auth.signInWithPassword({
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+    });
+    console.log(data.user.role)
     document.getElementById('login-div').style.display = 'none';
     console.log('Supabase client started', supabase)
 }
 
+
 document.getElementById("login").addEventListener("click", logUserIn)
+document.getElementById("login-email").addEventListener("click", logEmailIn)
 document.getElementById("import-school").addEventListener("click", importSchool)
 document.getElementById("create-pdfs").addEventListener("click", createPDFs)
 document.getElementById("start-classification").addEventListener("click", classify)
