@@ -87,7 +87,7 @@ function cropPhoto(pic, i, pictureList) {
     let MIN_ZOOM = 0
     let SCROLL_SENSITIVITY = 0.0005
 
-    if ((pic.width / pic.height) < 24 / 35) {
+    if ((pic.width / pic.height) < 24 / 30) {
         cameraZoom = document.getElementById("pic-border").getBoundingClientRect().width / pic.width;
     } else {
         cameraZoom = document.getElementById("pic-border").getBoundingClientRect().height / pic.height;
@@ -269,8 +269,8 @@ function drawText(page, text, x, y) {
 async function createID(userID, preprint) {
     let { data: user, error: userError } = await supabase
         .from('users')
-        .select('*')
-        .eq("id", userID)
+        .select("*")
+        .eq('id', userID)
     if (userError) {
         console.error(userError)
         throw new Error(`Supabase error getting user data: ${userID}`);
@@ -284,7 +284,7 @@ async function createID(userID, preprint) {
     const { data: userClass, error: classError } = await supabase
         .from('classes')
         .select('*')
-        .eq("id", user.class)
+        .eq("id", user.class_id)
     if (classError) {
         console.error(classError)
         throw new Error(`Supabase error getting class data: ${userID}`);
@@ -310,6 +310,20 @@ async function createID(userID, preprint) {
     }
     picture = picture[0]
 
+    let { data: pictureList, error: picListError } = await supabase
+        .from('picture_list')
+        .select('*')
+        .eq("picture_id", picture.picture_id)
+    if (picListError) {
+        console.error(picListError)
+        throw new Error(`Supabase error getting picture data: ${userID}`);
+    }
+    if (pictureList.length === 0) {
+        console.log('No accepted picture not found')
+        throw new Error(`No accepted picture not found: ${userID}`);
+    }
+    pictureList = pictureList[0]
+
     const { data: file, error: fileError } = await supabase.storage
         .from('pictures')
         .download(picture.user_id + '/' + picture.picture_id + '.jpg');
@@ -318,79 +332,115 @@ async function createID(userID, preprint) {
         throw new Error(`Supabase error downloading picture data: ${userID}`);
     }
 
-    appEle.innerHTML += `
-    <img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
-    <div style="position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>`
+    //appEle.innerHTML += `
+    //<img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
+    //<div style="position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>`
+
+    const originalImage = await blobToImage(await file);
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    //wait for the image to finish loading
+    //originalImage.addEventListener('load', async () => {
+
+        //set the canvas size to the new width and height
+        canvas.width = pictureList.frame[2];
+        canvas.height = pictureList.frame[3];
+
+        //draw the image
+        ctx.drawImage(originalImage, pictureList.frame[0], pictureList.frame[1], pictureList.frame[2], pictureList.frame[3], 0, 0, pictureList.frame[2], pictureList.frame[3]);
+        //find the input elements in the html
+        //create a temporary link for the download item
+        /*let tempLink = document.createElement('a');
+
+        //generate a new filename
+        let fileName = `image-cropped.jpg`;
+
+        //configure the link to download the resized image
+        tempLink.download = fileName;
+        tempLink.href = document.getElementById('canvas').toDataURL("image/jpeg", 1);
+        tempLink.click();*/
 
 
-    const idPdf = await PDFLib.PDFDocument.load(idPdfBytes);
-    idPdf.registerFontkit(fontkit)
-    bahnschrift = await idPdf.embedFont(bahnschriftBytes)
-    let pages = idPdf.getPages()
-    width = pages[0].getSize().width
-    height = pages[0].getSize().height
+        const idPdf = await PDFLib.PDFDocument.load(idPdfBytes);
+        idPdf.registerFontkit(fontkit)
+        bahnschrift = await idPdf.embedFont(bahnschriftBytes)
+        let pages = idPdf.getPages()
+        width = pages[0].getSize().width
+        height = pages[0].getSize().height
 
-    const image = await idPdf.embedJpg(await file.arrayBuffer())
-    pages[0].drawImage(image, {
-        x: 4.035 * (width / standardWidth),
-        y: height - (44.793 * (height / standardHeight)),
-        width: 24 * (width / standardWidth),
-        height: 30 * (height / standardHeight),
-    })
+        const image = await idPdf.embedJpg(await document.getElementById('canvas').toDataURL("image/jpeg", 1))
+        pages[0].drawImage(image, {
+            x: 4.035 * (width / standardWidth),
+            y: height - (44.793 * (height / standardHeight)),
+            width: 24 * (width / standardWidth),
+            height: 30 * (height / standardHeight),
+        })
 
-    drawText(pages[0], 'Test', 45.733, 17.771)
-    drawText(pages[0], user.last_name.substring(0, 19), 40.822, 25.706)
-    drawText(pages[0], user.first_name.substring(0, 19), 45.189, 33.628)
-    drawText(pages[0], user.birthdate.substring(0, 19), 52.596, 41.824)
+        drawText(pages[0], new Date(user.valid_date).toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).substring(0, 19), 45.733, 17.771)
+        drawText(pages[0], user.last_name.substring(0, 19), 40.822, 25.706)
+        drawText(pages[0], user.first_name.substring(0, 19), 45.189, 33.628)
+        drawText(pages[0], new Date(user.birthdate).toLocaleDateString('de-DE', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+        }).substring(0, 19), 52.596, 41.824)
 
-    JsBarcode("#barcode", user.stud_id, {
-        format: "CODE128",
-        lineColor: "#000",
-        width: 10,
-        height: 100,
-        displayValue: false
-    });
-    const barcodePng = await svgToPng(document.getElementById("barcode").outerHTML);
-    const barcode = await idPdf.embedPng(barcodePng)
-    pages[1].drawImage(barcode, {
-        x: (width - 50 * (width / standardWidth)) / 2,
-        y: height - (48 * (height / standardHeight)),
-        width: 50 * (width / standardWidth),
-        height: 6 * (height / standardHeight),
-    })
+        JsBarcode("#barcode", user.stud_id, {
+            format: "CODE128",
+            lineColor: "#000",
+            width: 10,
+            height: 100,
+            displayValue: false
+        });
+        const barcodePng = await svgToPng(document.getElementById("barcode").outerHTML);
+        const barcode = await idPdf.embedPng(barcodePng)
+        pages[1].drawImage(barcode, {
+            x: (width - 50 * (width / standardWidth)) / 2,
+            y: height - (48 * (height / standardHeight)),
+            width: 50 * (width / standardWidth),
+            height: 6 * (height / standardHeight),
+        })
 
-    const getStringWidth = (string, fontSize) =>
-        string
-            .split('')
-            .map((c) => c.charCodeAt(0))
-            .map((c) => bahnschrift.embedder.font.glyphForCodePoint(c).advanceWidth * (fontSize / 1000))
-            .reduce((total, width) => total + width, 0);
-    pages[1].drawText(user.stud_id, {
-        x: (width - 0.5 * getStringWidth(user.stud_id, 7)) / 2,
-        y: height - (51 * (height / standardHeight)),
-        size: 7,
-        font: bahnschrift,
-        color: PDFLib.rgb(0, 0, 0),
-    })
+        const getStringWidth = (string, fontSize) =>
+            string
+                .split('')
+                .map((c) => c.charCodeAt(0))
+                .map((c) => bahnschrift.embedder.font.glyphForCodePoint(c).advanceWidth * (fontSize / 1000))
+                .reduce((total, width) => total + width, 0);
+        pages[1].drawText(user.stud_id, {
+            x: (width - 0.5 * getStringWidth(user.stud_id, 7)) / 2,
+            y: height - (51 * (height / standardHeight)),
+            size: 7,
+            font: bahnschrift,
+            color: PDFLib.rgb(0, 0, 0),
+        })
 
 
-    const pdfDataUri = await idPdf.saveAsBase64({ dataUri: true });
-    window.location = pdfDataUri;
+        const pdfDataUri = await idPdf.saveAsBase64({ dataUri: true });
+        window.location = pdfDataUri;
 
-    /*const link = document.createElement("a");
-    link.href = pdfDataUri;
-    link.download = user.class_name + '_' + user.last_name + '-' + user.first_name + '.pdf';
-    link.click();*/
+        /*const link = document.createElement("a");
+        link.href = pdfDataUri;
+        link.download = user.class_name + '_' + user.last_name + '-' + user.first_name + '.pdf';
+        link.click();*/
+
+    //});
 }
 
 async function createPDFs() {
-    console.log("Create PDFs");
+    createID('dce5b99f-8a8d-4660-ba89-e6174aff2bbc', null)
+    /*console.log("Create PDFs");
     const { data: schools, error: schoolsError } = await supabase
         .from('schools')
         .select('* classes: ')
     console.log(schools)
     document.getElementById("create-pdfs-fields").innerHTML = `
-    <ul>`;
+    <ul>`;*/
 }
 
 async function result(userID, pictureID, status, rejectionReason) {
@@ -422,7 +472,10 @@ async function showSite(i, pictureList) {
     app.innerHTML = `
     <img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
     <div style="border: solid 2px black; position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>
-    <button style="position: absolute; left: 1em; top: 75vw;" id="resize">Neu zuschneiden</button>
+    <div style="position: absolute; left: 1em; top: 75vw;">
+    <button id="resize">Neu zuschneiden</button>
+    <p>UUID: ${pictureList[i].user_id}</p>
+    </div>
     
     <div style="position: absolute; top: 1em; right: 1em;">
     <button id="accept" style="color: green">Gehnehmigt</button>
@@ -451,10 +504,6 @@ async function showSite(i, pictureList) {
     <br>
     <button id="skip" style="color: black">Überspringen</button>
     </div>`
-    new Image(await file).onload = function () {
-        console.log(this)
-    }
-    console.log(await file, await file.arrayBuffer(), new Image(await file), new Image(await file.arrayBuffer()))
     document.getElementById("resize").addEventListener("click", async () => { cropPhoto(await blobToImage(await file), i, pictureList) })
     document.getElementById("accept").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "ACCEPTED", null); showSite(i + 1, pictureList); })
     document.getElementById("clarification").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "CLARIFICATION", null); showSite(i + 1, pictureList); })

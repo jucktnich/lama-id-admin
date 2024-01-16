@@ -53,10 +53,10 @@ body {
     border: 2px solid var(--akzente-buttons);
     width: calc(100vw - 3em);
     z-index: 996;
-    aspect-ratio: 24/35;
+    aspect-ratio: 24/30;
 }
 
-@media (min-aspect-ratio: 24/35) {
+@media (min-aspect-ratio: 24/30) {
     #pic-border {
         width: auto;
         height: calc(100vh - 3em);
