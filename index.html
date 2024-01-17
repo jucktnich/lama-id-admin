@@ -26,9 +26,13 @@
         <button id="start-classification">Bilder überprüfen</button>
         <br>
         <br>
+        <button id="get-rejected">Abgelehnte Nutzerliste herunterladen</button>
+        <p id="rejected-list"></p>
+        <br>
         <button id="create-pdfs">Schülerausweise erstellen</button>
         <div id="create-pdfs-fields"></div>
-        <canvas id="canvas"></canvas>
+        <p id="status-text"></p>
+        <canvas style="display: none;" id="canvas"></canvas>
     </div>
     <svg id="barcode"></svg>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/barcodes/JsBarcode.code128.min.js"></script>
