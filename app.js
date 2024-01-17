@@ -8,7 +8,8 @@ const bahnschriftBytes = await fetch('bahnschrift-SemiLight.ttf').then((res) => 
 const standardWidth = 86.6; const standardHeight = 55;
 let width, height, bahnschrift;
 
-const appEle = document.getElementById("app")
+const appEle = document.getElementById("app");
+const statusText = document.getElementById("status-text");
 
 function blobToImage(blob) {
     return new Promise(resolve => {
@@ -220,12 +221,6 @@ function cropPhoto(pic, i, pictureList) {
     draw(pic)
 }
 
-function uuidv4() {
-    return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
-}
-
 async function svgToPng(svg) {
     return new Promise((resolve) => {
         const url = getSvgUrl(svg);
@@ -244,6 +239,7 @@ function svgUrlToPng(svgUrl) {
         document.body.appendChild(svgImage);
         svgImage.onload = function () {
             const canvas = document.createElement('canvas');
+            canvas.style.display = 'none';
             canvas.width = svgImage.clientWidth;
             canvas.height = svgImage.clientHeight;
             const canvasCtx = canvas.getContext('2d');
@@ -266,9 +262,24 @@ function drawText(page, text, x, y) {
     })
 }
 
-function createID(users, className, preprint) {
+function clipImage(image, frame) {
     return new Promise(async (resolve) => {
-        let pictureIDs = []
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = frame[2];
+        canvas.height = frame[3];
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, frame[2], frame[3]);
+        ctx.drawImage(image, frame[0], frame[1], frame[2], frame[3], 0, 0, frame[2], frame[3]);
+        const clippedImage = await canvas.toDataURL("image/jpeg", 1)
+        resolve(clippedImage)
+    })
+}
+
+function createIDsForClass(users, className, preprint) {
+    return new Promise(async (resolve) => {
+        console.log(`Creating IDs for class ${className}`, users);
+        statusText.innerHTML = `Klasse ${className} wird erstellt`
 
         const idPdf = await PDFLib.PDFDocument.create()
         const srcPdf = await PDFLib.PDFDocument.load(idPdfBytes);
@@ -283,8 +294,11 @@ function createID(users, className, preprint) {
         width = pages[0].getSize().width
         height = pages[0].getSize().height
 
+        let pictureIDs = []
+
         for (let i = 0; i < users.length; i++) {
-            let userID = users[i]
+            const userID = users[i];
+            console.debug('Creating ID for user', userID)
             let { data: user, error: userError } = await supabase
                 .from('users')
                 .select("*")
@@ -351,35 +365,8 @@ function createID(users, className, preprint) {
                 throw new Error(`Supabase error downloading picture data: ${userID}`);
             }
 
-            //appEle.innerHTML += `
-            //<img src="${imageUrl}" style="position: absolute; top: ${-(72.9 / frame[3]) * frame[1]}vw; left: ${-(50 / frame[2]) * frame[0]}vw; height: ${(72.9 / frame[3]) * height}vw; width: ${((50 / frame[2]) * width)}vw; clip-path: polygon(${(frame[0] / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${(frame[1] / height) * 100}%, ${((frame[2] + frame[0]) / width) * 100}% ${((frame[3] + frame[1]) / height) * 100}%, ${((frame[0] / width) * 100)}% ${((frame[3] + frame[1]) / height) * 100}%);">
-            //<div style="position: absolute; top: 0; left: 0; height: calc(72.9vw - 2px); width: calc(50vw - 2px);");></div>`
-
-            const originalImage = await blobToImage(await file);
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = pictureList.frame[2];
-            canvas.height = pictureList.frame[3];
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, pictureList.frame[2], pictureList.frame[3]);
-
-            ctx.drawImage(originalImage, pictureList.frame[0], pictureList.frame[1], pictureList.frame[2], pictureList.frame[3], 0, 0, pictureList.frame[2], pictureList.frame[3]);
-            //find the input elements in the html
-            //create a temporary link for the download item
-            /*let tempLink = document.createElement('a');
-        
-            //generate a new filename
-            let fileName = `image-cropped.jpg`;
-        
-            //configure the link to download the resized image
-            tempLink.download = fileName;
-            tempLink.href = document.getElementById('canvas').toDataURL("image/jpeg", 1);
-            tempLink.click();*/
-
-
-
-
-            const image = await idPdf.embedJpg(await document.getElementById('canvas').toDataURL("image/jpeg", 1))
+            const clippedImage = await clipImage(await blobToImage(await file), pictureList.frame)
+            const image = await idPdf.embedJpg(clippedImage)
             pages[i * 2].drawImage(image, {
                 x: 4.035 * (width / standardWidth),
                 y: height - (44.793 * (height / standardHeight)),
@@ -387,48 +374,7 @@ function createID(users, className, preprint) {
                 height: 30 * (height / standardHeight),
             })
 
-            drawText(pages[i * 2], new Date(user.valid_date).toLocaleDateString('de-DE', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-            }).substring(0, 19), 45.733, 17.771)
-            drawText(pages[i * 2], user.last_name.substring(0, 19), 40.822, 25.706)
-            drawText(pages[i * 2], user.first_name.substring(0, 19), 45.189, 33.628)
-            drawText(pages[i * 2], new Date(user.birthdate).toLocaleDateString('de-DE', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-            }).substring(0, 19), 52.596, 41.824)
-
-            JsBarcode("#barcode", user.stud_id, {
-                format: "CODE128",
-                lineColor: "#000",
-                width: 10,
-                height: 100,
-                displayValue: false
-            });
-            const barcodePng = await svgToPng(document.getElementById("barcode").outerHTML);
-            const barcode = await idPdf.embedPng(barcodePng)
-            pages[(i * 2) + 1].drawImage(barcode, {
-                x: (width - 50 * (width / standardWidth)) / 2,
-                y: height - (48 * (height / standardHeight)),
-                width: 50 * (width / standardWidth),
-                height: 6 * (height / standardHeight),
-            })
-
-            const getStringWidth = (string, fontSize) =>
-                string
-                    .split('')
-                    .map((c) => c.charCodeAt(0))
-                    .map((c) => bahnschrift.embedder.font.glyphForCodePoint(c).advanceWidth * (fontSize / 1000))
-                    .reduce((total, width) => total + width, 0);
-            pages[(i * 2) + 1].drawText(user.stud_id, {
-                x: (width - 0.5 * getStringWidth(user.stud_id, 7)) / 2,
-                y: height - (51 * (height / standardHeight)),
-                size: 7,
-                font: bahnschrift,
-                color: PDFLib.rgb(0, 0, 0),
-            })
+            await addTextAndBarcode(pages, i, user, idPdf);
         }
 
         const pdfDataUri = await idPdf.saveAsBase64({ dataUri: true });
@@ -439,8 +385,6 @@ function createID(users, className, preprint) {
         link.download = className + '.pdf';
         link.click();
 
-        console.log(pictureIDs)
-
         for (let i = 0; i < pictureIDs.length; i++) {
             const { data, error } = await supabase
                 .from('verified_pictures')
@@ -450,16 +394,71 @@ function createID(users, className, preprint) {
         }
 
         resolve();
-
     })
 }
 
-async function createPDFs() {
-    console.log("Creating PDFs")
+async function addTextAndBarcode(pages, i, user, idPdf) {
+    drawText(pages[i * 2], new Date(user.valid_date).toLocaleDateString('de-DE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).substring(0, 19), 45.733, 17.771);
+    drawText(pages[i * 2], user.last_name.substring(0, 19), 40.822, 25.706);
+    drawText(pages[i * 2], user.first_name.substring(0, 19), 45.189, 33.628);
+    drawText(pages[i * 2], new Date(user.birthdate).toLocaleDateString('de-DE', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    }).substring(0, 19), 52.596, 41.824);
+
+    const barcodePng = await createBarcode(user.stud_id);
+    const barcode = await idPdf.embedPng(barcodePng);
+    pages[(i * 2) + 1].drawImage(barcode, {
+        x: (width - 50 * (width / standardWidth)) / 2,
+        y: height - (48 * (height / standardHeight)),
+        width: 50 * (width / standardWidth),
+        height: 6 * (height / standardHeight),
+    });
+
+
+    pages[(i * 2) + 1].drawText(user.stud_id, {
+        x: (width - 0.5 * getStringWidth(user.stud_id, 7)) / 2,
+        y: height - (51 * (height / standardHeight)),
+        size: 7,
+        font: bahnschrift,
+        color: PDFLib.rgb(0, 0, 0),
+    });
+}
+
+function getStringWidth(string, fontSize) {
+    return string
+        .split('')
+        .map((c) => c.charCodeAt(0))
+        .map((c) => bahnschrift.embedder.font.glyphForCodePoint(c).advanceWidth * (fontSize / 1000))
+        .reduce((total, width) => total + width, 0);
+}
+
+async function createBarcode(content) {
+    JsBarcode("#barcode", content, {
+        format: "CODE128",
+        lineColor: "#000",
+        width: 10,
+        height: 100,
+        displayValue: false
+    });
+    const barcodePng = await svgToPng(document.getElementById("barcode").outerHTML);
+    return barcodePng;
+}
+
+async function createIDs() {
+    console.log('Start creating IDs');
+    statusText.innerHTML = 'Nutzerdaten werden heruntergeladen';
+
     let { data: verifiedPictures, error } = await supabase
         .from('verified_pictures')
-        .select("*")
+        .select('*')
         .eq('status', 'ACCEPTED');
+
     for (let i = 0; i < verifiedPictures.length; i++) {
         let { data: user } = await supabase
             .from('users')
@@ -467,23 +466,25 @@ async function createPDFs() {
             .eq('id', verifiedPictures[i].user_id);
         verifiedPictures[i].class = user[0].class_id
     }
-    console.log(verifiedPictures)
+
     verifiedPictures.sort((a, b) => {
         return a.class.localeCompare(b.class)
     })
+
     let lastClass = verifiedPictures[0].class;
     let users = [];
     for (let i = 0; i < verifiedPictures.length; i++) {
-        let cClass = verifiedPictures[i].class
-        if (cClass !== lastClass) {
-            console.log(lastClass, users)
-            let { data: dClass } = await supabase
+        let currentClass = verifiedPictures[i].class;
+        if (currentClass !== lastClass) {
+            let { data: classData } = await supabase
                 .from('classes')
-                .select("*")
+                .select('*')
                 .eq('id', lastClass);
-            await createID(users, dClass[0].name, null)
-            users = []
-            lastClass = cClass
+
+            await createIDsForClass(users, classData[0].name, null);
+
+            users = [];
+            lastClass = currentClass;
         }
         users.push(verifiedPictures[i].user_id)
     }
@@ -621,6 +622,41 @@ async function classify() {
     showSite(0, pictureList)
 }
 
+async function getRejected() {
+    let { data: rejectedPictures, error } = await supabase
+        .from('verified_pictures')
+        .select('*')
+        .eq('status', 'REJECTED');
+
+    let returnString = '';
+    for (let i = 0; i < rejectedPictures.length; i++) {
+        let userID = rejectedPictures[i].user_id
+        let { data: pictureList, picListError } = await supabase
+            .from('picture_list')
+            .select('*')
+            .eq('user_id', userID)
+            .order('created_at', { ascending: false });
+        let { data: verifiedPictures, error } = await supabase
+            .from('verified_pictures')
+            .select('*')
+            .eq('picture_id', pictureList[0].picture_id);
+        if (verifiedPictures[0].status === 'REJECTED') {
+            let { data: user, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', userID);
+            user = user[0]
+            let { data: classData, classError } = await supabase
+                .from('classes')
+                .select('*')
+                .eq('id', user.class_id);
+            classData = classData[0]
+            returnString += `${user.public_id},${user.first_name},${user.last_name},${classData.name}<br>`
+        }
+    }
+    document.getElementById('rejected-list').innerHTML = returnString;
+}
+
 function importSchool() {
     console.log("Import school")
     document.getElementById("import-school-fields").innerHTML = '<input id="import-school-input" type="file"><br><input type="text" placeholder="Schul-ID" id="school-id"><br><button id="import-school-upload">Hochladen</button>'
@@ -722,5 +758,6 @@ async function logEmailIn() {
 document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("login-email").addEventListener("click", logEmailIn)
 document.getElementById("import-school").addEventListener("click", importSchool)
-document.getElementById("create-pdfs").addEventListener("click", createPDFs)
+document.getElementById("create-pdfs").addEventListener("click", createIDs)
 document.getElementById("start-classification").addEventListener("click", classify)
+document.getElementById("get-rejected").addEventListener("click", getRejected)
