@@ -27,7 +27,7 @@ async function picFinished(pic, frame, size, i, pictureList) {
     console.log("Cropping of the picture finished");
     const { data, error } = await supabase
         .from('picture_list')
-        .update({ frame: frame, size: size, original_state: pictureList[i] })
+        .update({ frame: frame, size: size, crop_disabled: false, original_state: pictureList[i] })
         .eq('picture_id', pictureList[i].picture_id)
         .select()
     pictureList[i].frame = frame;
@@ -489,14 +489,6 @@ async function createIDs() {
         users.push(verifiedPictures[i].user_id)
     }
     alert("Fertig")
-    //createID(['dce5b99f-8a8d-4660-ba89-e6174aff2bbc', 'dce5b99f-8a8d-4660-ba89-e6174aff2bbc', 'd4bfd467-6044-4f4e-aba6-f084399c793d'], null)
-    /*console.log("Create PDFs");
-    const { data: schools, error: schoolsError } = await supabase
-        .from('schools')
-        .select('* classes: ')
-    console.log(schools)
-    document.getElementById("create-pdfs-fields").innerHTML = `
-    <ul>`;*/
 }
 
 async function result(userID, pictureID, status, rejectionReason) {
@@ -562,6 +554,7 @@ async function showSite(i, pictureList) {
     <button id="skip" style="color: black">Überspringen</button>
     <button id="skip-20" style="color: black">20 Überspringen</button>
     </div>`
+    if (pictureList[i].crop_disabled) app.innerHTML += '<p style="position: absolute; top: 70vw;">Bild wurde nicht zugeschnitten</p>'
     document.getElementById("resize").addEventListener("click", async () => { cropPhoto(await blobToImage(await file), i, pictureList) })
     document.getElementById("accept").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "ACCEPTED", null); showSite(i + 1, pictureList); })
     document.getElementById("clarification").addEventListener("click", () => { result(pictureList[i].user_id, pictureList[i].picture_id, "CLARIFICATION", null); showSite(i + 1, pictureList); })
