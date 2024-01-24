@@ -16,6 +16,10 @@ function blobToImage(blob) {
         const url = URL.createObjectURL(blob)
         let img = new Image()
         img.onload = () => {
+            if (img.width === 0) {
+                console.error('Image has no width');
+                throw new Error('Image has no width')
+            }
             URL.revokeObjectURL(url)
             resolve(img)
         }
@@ -488,6 +492,12 @@ async function createIDs() {
         }
         users.push(verifiedPictures[i].user_id)
     }
+    let { data: classData } = await supabase
+        .from('classes')
+        .select('*')
+        .eq('id', lastClass);
+
+    await createIDsForClass(users, classData[0].name, null);
     alert("Fertig")
 }
 
@@ -644,7 +654,7 @@ async function getRejected() {
                 .select('*')
                 .eq('id', user.class_id);
             classData = classData[0]
-            returnString += `${user.public_id},${user.first_name},${user.last_name},${classData.name}<br>`
+            returnString += `${user.public_id},${user.first_name},${user.last_name},${classData.name},${new Date(pictureList[0].created_at).toLocaleString("de-DE")}<br>`
         }
     }
     document.getElementById('rejected-list').innerHTML = returnString;
