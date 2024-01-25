@@ -34,6 +34,7 @@ async function picFinished(pic, frame, size, i, pictureList) {
         .update({ frame: frame, size: size, crop_disabled: false, original_state: pictureList[i] })
         .eq('picture_id', pictureList[i].picture_id)
         .select()
+    if(error) console.log(error)
     pictureList[i].frame = frame;
     pictureList[i].size = size;
     showSite(i, pictureList)
