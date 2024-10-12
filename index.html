@@ -4,22 +4,35 @@
 <head>
     <title>Lama ID Admin</title>
     <meta charset="UTF-8">
-    <meta
-        description="Lama ID ist eine Software mithilfe welcher Schülerausweise mit geringem Arbeitsaufwand hergestellt werden können.">
-    <link rel="stylesheet" type="text/css" href="styles.css" />
+    <link rel="stylesheet" type="text/css" href="styles.css">
+    <link rel="icon" type="image/svg" href="icons/favicon.ico">
 </head>
 
 <body>
     <noscript>Diese Seite benötigt aktiviertes JavaScript.</noscript>
     <div id="login-div">
         <input type="password" name="service-key" id="service-key" placeholder="Service Key" required />
-        <button id="login">Mit Service-Key anmelden</button>
         <input type="email" name="email" id="email" placeholder="E-Mail" required />
         <input type="password" name="password" id="password" placeholder="Passwort" required />
-        <button id="login-email">Anmelden</button>
+        <button id="login">Anmelden</button>
         <br>
     </div>
-    <div id="app">
+    <main id="app" style="display: none;">
+        <h2>Admin-Portal</h2>
+        <div class="buttons-grid">
+            <button>Nutzer suchen</button>
+            <button id="start-classification">Bilder überprüfen</button>
+            <button id="create-pdfs">Ausweise drucken</button>
+            
+            <button>Nutzer ausgeben</button>
+            <button>Klärfälle prüfen</button>
+            <button>Ausweis manuell</button>
+            
+            <button>Klassen-Statistik ausgeben</button>
+            <button id="import-school">Schule importieren</button>
+        </div>
+      </main>
+    <!--<div id="app">
         <button id="import-school">Schule importieren</button>
         <div id="import-school-fields"></div>
         <br>
@@ -31,9 +44,9 @@
         <br>
         <button id="create-pdfs">Schülerausweise erstellen</button>
         <div id="create-pdfs-fields"></div>
-        <p id="status-text"></p>
-        <canvas style="display: none;" id="canvas"></canvas>
-    </div>
+    </div>-->
+    <p id="status-text"></p>
+    <canvas style="display: none;" id="canvas"></canvas>
     <svg id="barcode"></svg>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/barcodes/JsBarcode.code128.min.js"></script>
     <script src="https://unpkg.com/@pdf-lib/fontkit/dist/fontkit.umd.min.js"></script>
