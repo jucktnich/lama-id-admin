@@ -270,11 +270,11 @@ async function showClassificationSite(pictures, i) {
     document.getElementById("skip-20").addEventListener("click", () => { showClassificationSite(pictures, i + 20); })
 }
 
-async function classify() {
+async function classify(status) {
     let { data: pictures, error: picturesError } = await supabase
         .from('pictures')
         .select()
-        .eq('status', 'UPLOADED')
+        .eq('status', status)
         .order('user_id', { ascending: false })
         .order('created_at', { ascending: false });
     if (picturesError) {
@@ -283,6 +283,8 @@ async function classify() {
     }
 
     let lastID;
+
+    console.log(pictures)
 
     outer:
     for (let i = 0; i < pictures.length; i++) {
@@ -293,6 +295,8 @@ async function classify() {
         }
         lastID = pictures[i].user_id;
     }
+
+    console.log(pictures)
 
     const app = document.getElementById("app")
 
@@ -425,4 +429,5 @@ async function logUserIn() {
 document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("import-school").addEventListener("click", importSchoolScreen)
 document.getElementById("create-pdfs").addEventListener("click", createIDsScreen)
-document.getElementById("start-classification").addEventListener("click", classify)
+document.getElementById("start-classification").addEventListener("click", () => {classify('UPLOADED')})
+document.getElementById("start-clarification-classification").addEventListener("click", () => {classify('CLARIFICATION')})
