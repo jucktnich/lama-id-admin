@@ -384,12 +384,12 @@ async function getUserData(search) {
             campaigns(id, priority)
         `)
         .textSearch('search_vector', createSearchString(search));
-    for (let i = 0; i < users.length; i ++) {
+    for (let i = 0; i < users.length; i++) {
         const user = users[i];
         let newestCampaign = { priority: -1 };
         for (let j = 0; j < user.campaigns.length; j++) {
             const campaign = user.campaigns[j];
-            if(campaign.priority > newestCampaign.priority) newestCampaign = campaign;
+            if (campaign.priority > newestCampaign.priority) newestCampaign = campaign;
         }
         const { data: userCampaign } = await supabase
             .from('user_campaign')
@@ -413,8 +413,66 @@ async function searchForUser(search) {
         table += `<tr><th>${user.school_id}${user.public_id}</th><th>${user.last_name}</th><th>${user.first_name}</th><th>${user.schools.name} - ${user.groupName}</th><th>${formatDate(user.birthdate)}</th><th>${user.external_id}</th></tr>`
     }
     table += '</table>'
-    console.log(table)
-    //document.getElementById('user-table')
+    document.getElementById('app').innerHTML = table
+}
+
+async function printGroupStats() {
+    console.log('Print group stats')
+    const { data: acceptedPictures, error: acceptedPicturesError } = await supabase
+        .from('pictures')
+        .select()
+        .eq('status', 'ACCEPTED')
+        .order('user_id');
+    let { data: users, error: usersError } = await supabase
+        .from('users')
+        .select()
+        .order('id');
+        console.log(users)
+    let j = 0;
+    for (let i = 0; i < users.length; i++) {
+        if ((j < acceptedPictures.length) && (users[i].id === acceptedPictures[j].user_id)) {
+            users[i].acceptedPicture = true;
+            let userID = acceptedPictures[j].user_id;
+            while ((j < acceptedPictures.length) && (acceptedPictures[j].user_id === userID)) j++;
+        }
+        let { data: userCampaigns, error: userCampaignError } = await supabase
+            .from('user_campaign')
+            .select(`*, campaigns(*)`)
+            .eq('user_id', users[i].id);
+        userCampaigns.sort((a, b) => b.campaign.priority - a.campaign.priority);
+        users[i].campaign = userCampaigns[0];
+    }
+    users.sort((a, b) => a.campaign.group_id.localeCompare(b.campaign.group_id));
+    //users = Object.groupBy(users, ({ campaign. }) => type);
+    let accepted = 0;
+    let overall = 0;
+    let lastGroup = users[0].campaign.group_id;
+    let result = [];
+    for (let i = 0; i < users.length; i++) {
+        if (lastGroup !== users[i].campaign.group_id) {
+            let { data: group, error: groupError } = await supabase
+                .from('groups')
+                .select()
+                .eq('id', lastGroup);
+            group.accepted = accepted;
+            group.overall = overall;
+            lastGroup = users[i].campaign.group_id;
+            accepted = 0;
+            overall = 0;
+            result.push(group);
+        }
+        if(users[i].acceptedPicture) accepted++;
+        overall++;
+    }
+    result.sort((a, b) => (b.accepted/b.overall) - (a.accepted/a.overall));
+    console.log(result);
+    let table = '<table><tr><th>Schule</th><th>Klasse</th><th>Verhältnis</th></tr>'
+    for (let i = 0; i < result.length; i++) {
+        let group = result[i]
+        table += `<tr><th>-</th><th>${group[0].name}</th><th>${group.accepted}/${group.overall}</th></tr>`
+    }
+    table += '</table>'
+    document.getElementById('app').innerHTML = table
 }
 
 async function logUserIn() {
@@ -429,5 +487,6 @@ async function logUserIn() {
 document.getElementById("login").addEventListener("click", logUserIn)
 document.getElementById("import-school").addEventListener("click", importSchoolScreen)
 document.getElementById("create-pdfs").addEventListener("click", createIDsScreen)
-document.getElementById("start-classification").addEventListener("click", () => {classify('UPLOADED')})
-document.getElementById("start-clarification-classification").addEventListener("click", () => {classify('CLARIFICATION')})
+document.getElementById("start-classification").addEventListener("click", () => { classify('UPLOADED') })
+document.getElementById("start-clarification-classification").addEventListener("click", () => { classify('CLARIFICATION') })
+document.getElementById("group-stats").addEventListener("click", () => { printGroupStats() })
