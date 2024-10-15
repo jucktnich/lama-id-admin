@@ -275,8 +275,8 @@ async function classify(status) {
         .from('pictures')
         .select()
         .eq('status', status)
-        .order('user_id', { ascending: false })
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('user_id', { ascending: false });
     if (picturesError) {
         console.warn(picturesError);
         return;
