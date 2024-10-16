@@ -7,7 +7,7 @@ let idPDFBytes, fontsData;
 
 const statusText = document.getElementById("status-text");
 
-async function createIDs(campaignID, config) {
+async function createIDs(campaignID, config, groups) {
     const { data: campaigns, error: campaignsError } = await supabase
         .from('campaigns')
         .select()
@@ -86,24 +86,29 @@ async function createIDs(campaignID, config) {
     for (let i = 0; i < pictures.length; i++) {
         let currentGroup = pictures[i].user_campaign.group_id;
         if (currentGroup !== lastGroup) {
-            let { data: group } = await supabase
-                .from('groups')
-                .select('*')
-                .eq('id', lastGroup);
+        console.log(lastGroup, groups);
+            if(groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
+                let { data: group } = await supabase
+                    .from('groups')
+                    .select('*')
+                    .eq('id', lastGroup);
 
-            await createIDsForGroup(group[0].name, groupPictures);
+                await createIDsForGroup(group[0].name, groupPictures);
+            }
 
             groupPictures = [];
             lastGroup = currentGroup;
         }
         if (groupPictures.length === 0 || pictures[i].user_id !== groupPictures.at(-1).user_id) groupPictures.push(pictures[i]);
     }
+    if(groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
     let { data: group } = await supabase
         .from('groups')
         .select('*')
         .eq('id', lastGroup);
 
     await createIDsForGroup(group[0].name, groupPictures);
+    }
 }
 
 function createIDsForGroup(groupName, pictures) {
@@ -160,7 +165,7 @@ function createIDsForGroup(groupName, pictures) {
 
         const pdfDataUri = await idPDF.saveAsBase64({ dataUri: true });
         //window.location = pdfDataUri;
-
+        
         const link = document.createElement("a");
         link.href = pdfDataUri;
         link.download = groupName + '.pdf';
@@ -251,10 +256,10 @@ async function createBarcode(content) {
     return barcodePng;
 }
 
-export default async function (campaignID, config={}) {
+export default async function (campaignID, config={}, groups=['*']) {
     console.log(`Start creating IDs for campaign ${campaignID}`);
     statusText.innerHTML = 'Nutzerdaten werden heruntergeladen';
-    await createIDs(campaignID, config);
+    await createIDs(campaignID, config, groups);
     console.log('All IDs created');
     statusText.innerHTML = 'Fertig';
 }

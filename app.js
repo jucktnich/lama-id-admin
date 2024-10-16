@@ -355,8 +355,15 @@ function importSchoolScreen() {
     })
 }
 
-function createIDsScreen() {
-    createIDs('03f43047-54f9-42d2-81e8-c061f57f5dd9');
+async function createIDsScreen() {
+    let groups = await getGroupStats();
+    groups = groups.filter((group) => group.accepted === group.overall);
+    let groupList = [];
+    for (let i = 0; i < groups.length; i++) {
+      groupList.push('' + groups[i][0].id);
+    }
+    await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, groupList);
+    await createIDs('4cd7f3da-0d2f-4760-9ba1-4bbc1ce62186', {}, groupList);
 }
 
 function createSearchString(search) {
@@ -416,9 +423,8 @@ async function searchForUser(search) {
     document.getElementById('app').innerHTML = table
 }
 
-async function printGroupStats() {
-    console.log('Print group stats')
-    const { data: acceptedPictures, error: acceptedPicturesError } = await supabase
+async function getGroupStats() {
+const { data: acceptedPictures, error: acceptedPicturesError } = await supabase
         .from('pictures')
         .select()
         .eq('status', 'ACCEPTED')
@@ -465,14 +471,19 @@ async function printGroupStats() {
         overall++;
     }
     result.sort((a, b) => (b.accepted/b.overall) - (a.accepted/a.overall));
-    console.log(result);
-    let table = '<table><tr><th>Schule</th><th>Klasse</th><th>Verhältnis</th></tr>'
-    for (let i = 0; i < result.length; i++) {
-        let group = result[i]
-        table += `<tr><th>-</th><th>${group[0].name}</th><th>${group.accepted}/${group.overall}</th></tr>`
+    return result;
+}
+
+async function printGroupStats() {
+    console.log('Print group stats');
+    const groups = await getGroupStats();
+    let table = '<table><tr><th>Schule</th><th>Klasse</th><th>Verhältnis</th></tr>';
+    for (let i = 0; i < groups.length; i++) {
+        let group = groups[i];
+        table += `<tr><th>-</th><th>${group[0].name}</th><th>${group.accepted}/${group.overall}</th></tr>`;
     }
-    table += '</table>'
-    document.getElementById('app').innerHTML = table
+    table += '</table>';
+    document.getElementById('app').innerHTML = table;
 }
 
 async function logUserIn() {
