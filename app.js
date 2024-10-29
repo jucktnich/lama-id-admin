@@ -357,14 +357,14 @@ function importSchoolScreen() {
 }
 
 async function createIDsScreen() {
-    let groups = await getGroupStats();
+    /*let groups = await getGroupStats();
     groups = groups.filter((group) => group.accepted === group.overall);
     let groupList = [];
     for (let i = 0; i < groups.length; i++) {
       groupList.push('' + groups[i].id);
-    }
-    await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, groupList);
-    await createIDs('4cd7f3da-0d2f-4760-9ba1-4bbc1ce62186', {}, groupList);
+    }*/
+    await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, ['*']);
+    await createIDs('4cd7f3da-0d2f-4760-9ba1-4bbc1ce62186', {}, ['*']);
 }
 
 function createSearchString(search) {
