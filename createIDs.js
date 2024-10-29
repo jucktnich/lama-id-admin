@@ -86,8 +86,8 @@ async function createIDs(campaignID, config, groups) {
     for (let i = 0; i < pictures.length; i++) {
         let currentGroup = pictures[i].user_campaign.group_id;
         if (currentGroup !== lastGroup) {
-        console.log(lastGroup, groups);
-            if(groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
+            console.log(lastGroup, groups);
+            if (groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
                 let { data: group } = await supabase
                     .from('groups')
                     .select('*')
@@ -101,13 +101,13 @@ async function createIDs(campaignID, config, groups) {
         }
         if (groupPictures.length === 0 || pictures[i].user_id !== groupPictures.at(-1).user_id) groupPictures.push(pictures[i]);
     }
-    if(groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
-    let { data: group } = await supabase
-        .from('groups')
-        .select('*')
-        .eq('id', lastGroup);
+    if (groups.length !== 0 && (groups[0] === '*' || groups.includes(lastGroup))) {
+        let { data: group } = await supabase
+            .from('groups')
+            .select('*')
+            .eq('id', lastGroup);
 
-    await createIDsForGroup(group[0].name, groupPictures);
+        await createIDsForGroup(group[0].name, groupPictures);
     }
 }
 
@@ -165,7 +165,7 @@ function createIDsForGroup(groupName, pictures) {
 
         const pdfDataUri = await idPDF.saveAsBase64({ dataUri: true });
         //window.location = pdfDataUri;
-        
+
         const link = document.createElement("a");
         link.href = pdfDataUri;
         link.download = groupName + '.pdf';
@@ -188,28 +188,30 @@ async function addTextAndBarcode(idPdf, pages, i, fonts, user) {
     const fields = styles.fields
     for (const key in fields) {
         const field = fields[key]
-        if(key === 'external_id') continue;
+        if (key === 'external_id') continue;
         let text = user[key];
-        if(field.type === 'date') text = formatDate(text);
+        if (field.type === 'date') text = formatDate(text);
         drawText(pages[i * 2], text.substring(0, field.max_length), field.x, field.y, field.size, fonts[field.font]);
     }
 
-    const barcodePng = await createBarcode(user.external_id);
-    const barcode = await idPdf.embedPng(barcodePng);
-    pages[(i * 2) + 1].drawImage(barcode, {
-        x: (width - styles.barcode.x * (width / styles.size.width)) / 2,
-        y: height - (styles.barcode.y * (height / styles.size.height)),
-        width: styles.barcode.width * (width / styles.size.width),
-        height: styles.barcode.height * (height / styles.size.height),
-    });
+    if (styles.barcode !== undefined) {
+        const barcodePng = await createBarcode(user.external_id);
+        const barcode = await idPdf.embedPng(barcodePng);
+        pages[(i * 2) + 1].drawImage(barcode, {
+            x: (width - styles.barcode.x * (width / styles.size.width)) / 2,
+            y: height - (styles.barcode.y * (height / styles.size.height)),
+            width: styles.barcode.width * (width / styles.size.width),
+            height: styles.barcode.height * (height / styles.size.height),
+        });
 
-    pages[(i * 2) + 1].drawText(user.external_id.toString(), {
-        x: (width - 0.5 * getStringWidth(user.external_id, styles.fields.external_id.size, fonts[styles.fields.external_id.font])) / 2,
-        y: height - (styles.fields.external_id.y * (height / styles.size.height)),
-        size: styles.fields.external_id.size,
-        font: fonts[styles.fields.external_id.font],
-        color: PDFLib.rgb(0, 0, 0),
-    });
+        pages[(i * 2) + 1].drawText(user.external_id.toString(), {
+            x: (width - 0.5 * getStringWidth(user.external_id, styles.fields.external_id.size, fonts[styles.fields.external_id.font])) / 2,
+            y: height - (styles.fields.external_id.y * (height / styles.size.height)),
+            size: styles.fields.external_id.size,
+            font: fonts[styles.fields.external_id.font],
+            color: PDFLib.rgb(0, 0, 0),
+        });
+    }
 }
 
 function drawText(page, text, x, y, size, font) {
@@ -256,7 +258,7 @@ async function createBarcode(content) {
     return barcodePng;
 }
 
-export default async function (campaignID, config={}, groups=['*']) {
+export default async function (campaignID, config = {}, groups = ['*']) {
     console.log(`Start creating IDs for campaign ${campaignID}`);
     statusText.innerHTML = 'Nutzerdaten werden heruntergeladen';
     await createIDs(campaignID, config, groups);
