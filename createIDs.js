@@ -112,6 +112,7 @@ async function createIDs(campaignID, config, groups) {
 }
 
 function createIDsForGroup(groupName, pictures) {
+    if (groupName === "5g") return;
     if (pictures.length === 0) return;
     return new Promise(async (resolve) => {
         console.log(`Creating IDs for class ${groupName}`, pictures);
