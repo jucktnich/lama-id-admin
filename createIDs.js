@@ -59,6 +59,10 @@ async function createIDs(campaignID, config, groups) {
         return;
     }
     if (campaigns[0].payment_required) pictures = pictures.filter(picture => picture.user_campaign.paid);
+    if (pictures.length === 0) {
+        console.log('No new paid pictures');
+        return;
+    }
 
     for (let i = 0; i < pictures.length; i++) {
         const { data: user } = await supabase
@@ -112,7 +116,6 @@ async function createIDs(campaignID, config, groups) {
 }
 
 function createIDsForGroup(groupName, pictures) {
-    if (groupName === "5g") return;
     if (pictures.length === 0) return;
     return new Promise(async (resolve) => {
         console.log(`Creating IDs for class ${groupName}`, pictures);
@@ -164,13 +167,16 @@ function createIDsForGroup(groupName, pictures) {
             await addTextAndBarcode(idPDF, pages, i, fonts, picture.user);
         }
 
-        const pdfDataUri = await idPDF.saveAsBase64({ dataUri: true });
-        //window.location = pdfDataUri;
+        const pdfBytes = await idPDF.save();
 
-        const link = document.createElement("a");
-        link.href = pdfDataUri;
-        link.download = groupName + '.pdf';
-        link.click();
+        const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = groupName + '.pdf';
+        a.click();
+
+        URL.revokeObjectURL(url);
 
         for (let i = 0; i < pictureIDs.length; i++) {
             const { error } = await supabase
