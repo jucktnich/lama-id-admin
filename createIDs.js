@@ -44,7 +44,7 @@ async function createIDs(campaignID, config, groups) {
         fontsData[fontName] = await font.arrayBuffer();
     }
     let stati = ['ACCEPTED'];
-    if (config.printAll) stati.push('PRINTED')
+    /*if (config.printAll) */stati.push('PRINTED');
     let { data: pictures, error } = await supabase
         .from('pictures')
         .select(`
@@ -52,13 +52,23 @@ async function createIDs(campaignID, config, groups) {
             user_campaign(group_id, valid_date, paid)
         `)
         .in('status', stati)
-        .eq('campaign_id', campaignID);
+        .eq('campaign_id', campaignID)
+        .order('user_id')
+        .order('created_at', { ascending: false });
+    let lastUser;
+    let cleanedPictures = [];
+    for (let i = 0; i < pictures.length; i++) {
+        if (pictures[i].user_id === lastUser) continue;
+        if (pictures[i].status === 'ACCEPTED') cleanedPictures.push(pictures[i]);
+        lastUser = pictures[i].user_id
+    }
+    pictures = cleanedPictures;
     if (error) throw new Error();
     if (pictures.length === 0) {
         console.log('No new pictures');
         return;
     }
-    if (campaigns[0].payment_required) pictures = pictures.filter(picture => picture.user_campaign.paid);
+    //if (campaigns[0].payment_required) pictures = pictures.filter(picture => picture.user_campaign.paid);
     if (pictures.length === 0) {
         console.log('No new paid pictures');
         return;
