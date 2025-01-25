@@ -365,6 +365,7 @@ async function createIDsScreen() {
     }*/
     await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, ['*']);
     await createIDs('4cd7f3da-0d2f-4760-9ba1-4bbc1ce62186', {}, ['*']);
+    await createIDs('6c7e7db5-ef4a-49db-b22e-ed64c0ca3a0a', {}, ['*']);
 }
 
 function createSearchString(search) {
