@@ -85,13 +85,13 @@ function parseSchoolCSV(csv) {
             deleteDate: new Date(csv[i][6])
         }*/
         let user = {
-            externalID: null,
+            externalID: csv[i][4],
             lastName: csv[i][1],
             firstName: csv[i][2],
             birthdate: stringToDate(csv[i][3]),
             class: csv[i][0],
-            validDate: stringToDate(csv[i][4]),
-            deleteDate: new Date('2030-07-31')
+            validDate: new Date('2028-07-31'),
+            deleteDate: new Date('2031-07-31')
         }
         csv[i] = user
     }
