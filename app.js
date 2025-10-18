@@ -276,8 +276,8 @@ async function classify(status) {
         .from('pictures')
         .select()
         .eq('status', status)
-        .order('created_at', { ascending: false })
-        .order('user_id', { ascending: false });
+        .order('user_id', { ascending: false })
+        .order('created_at', { ascending: false });
     if (picturesError) {
         console.warn(picturesError);
         return;
@@ -290,6 +290,11 @@ async function classify(status) {
     outer:
     for (let i = 0; i < pictures.length; i++) {
         if (!pictures[i]) continue;
+        if (pictures[i].status !== status) {
+            lastID = pictures[i].user_id;
+            delete pictures[i];
+            continue outer;
+        }
         if (pictures[i].user_id === lastID) {
             delete pictures[i];
             continue outer;
@@ -357,15 +362,15 @@ function importSchoolScreen() {
 }
 
 async function createIDsScreen() {
-    /*let groups = await getGroupStats();
+    let groups = await getGroupStats();
     groups = groups.filter((group) => group.accepted === group.overall);
     let groupList = [];
     for (let i = 0; i < groups.length; i++) {
       groupList.push('' + groups[i].id);
-    }*/
-    await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, ['*']);
+    }
+    /*await createIDs('1ced281d-8ea0-46e2-a9d7-046be3dd41a9', {}, ['*']);
     await createIDs('4cd7f3da-0d2f-4760-9ba1-4bbc1ce62186', {}, ['*']);
-    await createIDs('6c7e7db5-ef4a-49db-b22e-ed64c0ca3a0a', {}, ['*']);
+    await createIDs('6c7e7db5-ef4a-49db-b22e-ed64c0ca3a0a', {}, ['*']);*/
 }
 
 function createSearchString(search) {
