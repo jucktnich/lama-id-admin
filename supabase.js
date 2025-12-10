@@ -1,4 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.86.0/+esm';
 
 const supabaseUrl = 'https://supabase.lama-id.de'
 const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzIxMjUzNjAwLAogICJleHAiOiAxODc5MDIwMDAwCn0.m5TdEY7e0ORCUNxKSDQSmRNjINgI6qIlyp38sCWlroE'
